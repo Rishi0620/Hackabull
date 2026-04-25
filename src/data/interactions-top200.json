@@ -1,0 +1,122 @@
+[
+  {
+    "pair": ["warfarin", "ibuprofen"],
+    "severity": "danger",
+    "summary": "Increased risk of bleeding, including GI hemorrhage.",
+    "plainLanguage": "Taking these together can make you bleed more easily, even from small cuts. Avoid this combination."
+  },
+  {
+    "pair": ["warfarin", "aspirin"],
+    "severity": "danger",
+    "summary": "Significant increase in bleeding risk.",
+    "plainLanguage": "Both thin your blood. Together they raise the risk of dangerous bleeding."
+  },
+  {
+    "pair": ["warfarin", "naproxen"],
+    "severity": "danger",
+    "summary": "NSAIDs increase warfarin bleeding risk.",
+    "plainLanguage": "Naproxen and warfarin together can cause serious bleeding."
+  },
+  {
+    "pair": ["lisinopril", "potassium"],
+    "severity": "caution",
+    "summary": "ACE inhibitors raise potassium; supplements can cause hyperkalemia.",
+    "plainLanguage": "Adding potassium supplements with this blood pressure pill can raise potassium too high."
+  },
+  {
+    "pair": ["lisinopril", "ibuprofen"],
+    "severity": "caution",
+    "summary": "NSAIDs may reduce lisinopril effect and impair kidney function.",
+    "plainLanguage": "Ibuprofen can make your blood pressure pill work less well and stress your kidneys."
+  },
+  {
+    "pair": ["metformin", "alcohol"],
+    "severity": "caution",
+    "summary": "Increased risk of lactic acidosis.",
+    "plainLanguage": "Drinking alcohol with metformin can cause a rare but serious buildup of acid in the blood."
+  },
+  {
+    "pair": ["simvastatin", "grapefruit"],
+    "severity": "caution",
+    "summary": "Grapefruit juice raises simvastatin levels and muscle damage risk.",
+    "plainLanguage": "Avoid grapefruit juice — it makes this cholesterol pill stronger and can hurt your muscles."
+  },
+  {
+    "pair": ["sertraline", "tramadol"],
+    "severity": "danger",
+    "summary": "Risk of serotonin syndrome.",
+    "plainLanguage": "Together these can cause a dangerous reaction called serotonin syndrome."
+  },
+  {
+    "pair": ["sertraline", "ibuprofen"],
+    "severity": "caution",
+    "summary": "SSRIs with NSAIDs increase GI bleeding risk.",
+    "plainLanguage": "These together can cause stomach bleeding more easily."
+  },
+  {
+    "pair": ["acetaminophen", "alcohol"],
+    "severity": "caution",
+    "summary": "Increased risk of liver toxicity.",
+    "plainLanguage": "Drinking alcohol with Tylenol can hurt your liver."
+  },
+  {
+    "pair": ["amoxicillin", "methotrexate"],
+    "severity": "caution",
+    "summary": "Penicillins may increase methotrexate toxicity.",
+    "plainLanguage": "This antibiotic can make methotrexate too strong."
+  },
+  {
+    "pair": ["clopidogrel", "omeprazole"],
+    "severity": "caution",
+    "summary": "PPIs may reduce clopidogrel effectiveness.",
+    "plainLanguage": "Omeprazole can make this blood thinner work less well."
+  },
+  {
+    "pair": ["digoxin", "amiodarone"],
+    "severity": "danger",
+    "summary": "Amiodarone increases digoxin levels significantly.",
+    "plainLanguage": "Together these can cause dangerous heart rhythm problems."
+  },
+  {
+    "pair": ["levothyroxine", "calcium"],
+    "severity": "info",
+    "summary": "Calcium reduces levothyroxine absorption — separate doses by 4 hours.",
+    "plainLanguage": "Take your thyroid pill at least 4 hours apart from calcium."
+  },
+  {
+    "pair": ["levothyroxine", "iron"],
+    "severity": "info",
+    "summary": "Iron reduces levothyroxine absorption.",
+    "plainLanguage": "Iron pills can block your thyroid medicine. Space them out."
+  },
+  {
+    "pair": ["fluoxetine", "tramadol"],
+    "severity": "danger",
+    "summary": "Risk of serotonin syndrome.",
+    "plainLanguage": "These together can cause a dangerous serotonin reaction."
+  },
+  {
+    "pair": ["fluoxetine", "warfarin"],
+    "severity": "caution",
+    "summary": "Fluoxetine may increase warfarin effect.",
+    "plainLanguage": "Fluoxetine can make warfarin's blood-thinning effect stronger."
+  },
+  {
+    "pair": ["aspirin", "ibuprofen"],
+    "severity": "caution",
+    "summary": "Ibuprofen may reduce cardioprotective effect of low-dose aspirin.",
+    "plainLanguage": "Ibuprofen can block aspirin's heart-protecting effect. Take aspirin first."
+  },
+  {
+    "pair": ["metoprolol", "verapamil"],
+    "severity": "danger",
+    "summary": "Combined risk of bradycardia and heart block.",
+    "plainLanguage": "Together these can dangerously slow your heart rate."
+  },
+  {
+    "pair": ["sildenafil", "nitroglycerin"],
+    "severity": "danger",
+    "summary": "Severe hypotension risk.",
+    "plainLanguage": "This combination can cause a life-threatening drop in blood pressure."
+  }
+]
