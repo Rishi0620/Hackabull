@@ -47,6 +47,14 @@ export default function VoicePage() {
 
   const recognitionRef = useRef<any>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Refs so recognition event handlers always see current values (no stale closure)
+  const voiceStateRef = useRef<VoiceState>('idle')
+  const transcriptRef = useRef('')
+  const handleQueryRef = useRef<(q: string) => void>(() => {})
+
+  // Keep refs in sync so recognition handlers always see current values
+  useEffect(() => { voiceStateRef.current = voiceState }, [voiceState])
+  useEffect(() => { transcriptRef.current = transcript }, [transcript])
 
   // Redirect to onboarding if no household
   useEffect(() => {
@@ -107,22 +115,32 @@ export default function VoicePage() {
       const current = event.resultIndex
       const result = event.results[current]
       const text = result[0].transcript
-
       setTranscript(text)
-
+      transcriptRef.current = text
+      // Some browsers fire isFinal here — handle immediately
       if (result.isFinal) {
-        handleQuery(text)
+        handleQueryRef.current(text)
       }
     }
 
     recognition.onerror = (event: any) => {
       console.error('[v0] Speech recognition error:', event.error)
       setVoiceState('idle')
+      voiceStateRef.current = 'idle'
     }
 
+    // onend always fires when recognition stops (silence, manual stop, or error).
+    // Use refs to avoid stale closure — if we were listening and have a transcript,
+    // submit the query. This covers browsers that don't fire isFinal before ending.
     recognition.onend = () => {
-      if (voiceState === 'listening') {
-        setVoiceState('idle')
+      if (voiceStateRef.current === 'listening') {
+        const pending = transcriptRef.current.trim()
+        if (pending) {
+          handleQueryRef.current(pending)
+        } else {
+          setVoiceState('idle')
+          voiceStateRef.current = 'idle'
+        }
       }
     }
 
@@ -165,21 +183,29 @@ export default function VoicePage() {
             throw new Error('Cloud query failed')
           }
         } else {
-          // Route to local (Gemma 4)
+          // Route to Gemma 4 — falls back to Gemini if Gemma fails or context not loaded
           const res = await fetch('/api/gemma/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query,
-              context: voiceContext,
-            }),
+            body: JSON.stringify({ query, context: voiceContext }),
           })
 
           if (res.ok) {
             const data = await res.json()
             response = { text: data.answer, model: data.model === 'gemma' ? 'gemma' : 'gemini' }
           } else {
-            throw new Error('Local query failed')
+            // Gemma failed — fall back to Gemini cloud instead of crashing
+            const fallback = await fetch('/api/voice/query', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query, householdId: household.householdId }),
+            })
+            if (fallback.ok) {
+              const data = await fallback.json()
+              response = { text: data.answer, model: 'gemini' }
+            } else {
+              throw new Error('Both Gemma and Gemini failed to answer')
+            }
           }
         }
 
@@ -189,10 +215,14 @@ export default function VoicePage() {
         console.error('[v0] Query failed:', err)
         setAnswer({ text: 'Sorry, I could not process that question. Please try again.', model: 'gemma' })
         setVoiceState('idle')
+        voiceStateRef.current = 'idle'
       }
     },
     [household, voiceContext]
   )
+
+  // Keep the ref current so recognition onend always calls the latest version
+  useEffect(() => { handleQueryRef.current = handleQuery }, [handleQuery])
 
   const speakAnswer = async (text: string) => {
     setVoiceState('speaking')

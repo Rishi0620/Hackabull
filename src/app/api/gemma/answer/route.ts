@@ -28,17 +28,13 @@ export async function POST(req: NextRequest) {
     const genai = new GoogleGenerativeAI(apiKey);
     const model = genai.getGenerativeModel({
       model: GEMMA_MODEL,
-      generationConfig: {
-        // @ts-ignore — thinkingConfig is valid for Gemma 4 but not in types yet
-        thinkingConfig: { thinkingBudget: 0 },
-        maxOutputTokens: 200,
-        temperature: 0.3,
-      },
+      generationConfig: { maxOutputTokens: 200, temperature: 0.3 },
     });
 
-    const ctx = context as LocalContext;
+    // context can be null if the voice page hasn't loaded household data yet
+    const ctx: LocalContext = context ?? { members: [], medications: [], recentDoses: [] };
 
-    const medsByMember = ctx.medications.reduce<Record<string, string[]>>((acc, m) => {
+    const medsByMember = (ctx.medications ?? []).reduce<Record<string, string[]>>((acc, m) => {
       acc[m.member] = acc[m.member] || [];
       acc[m.member].push(m.name);
       return acc;

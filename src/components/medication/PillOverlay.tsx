@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { HelpCircle, ShieldCheck } from 'lucide-react';
+import { HelpCircle, ShieldCheck, PlusCircle } from 'lucide-react';
 
 export type PillResult = {
   shape: string;
@@ -17,20 +17,10 @@ export type PillResult = {
 };
 
 const colorSwatch: Record<string, string> = {
-  white: '#F1F5F9',
-  yellow: '#EAB308',
-  blue: '#3B82F6',
-  red: '#DC2626',
-  pink: '#EC4899',
-  green: '#22C55E',
-  orange: '#F97316',
-  brown: '#92400E',
-  purple: '#8B5CF6',
-  black: '#111827',
-  amber: '#F59E0B',
-  beige: '#E5D3B3',
-  peach: '#FBBF91',
-  gray: '#6B7280',
+  white: '#F1F5F9', yellow: '#EAB308', blue: '#3B82F6', red: '#DC2626',
+  pink: '#EC4899', green: '#22C55E', orange: '#F97316', brown: '#92400E',
+  purple: '#8B5CF6', black: '#111827', amber: '#F59E0B', beige: '#E5D3B3',
+  peach: '#FBBF91', gray: '#6B7280',
 };
 
 function swatch(color: string): string {
@@ -38,7 +28,15 @@ function swatch(color: string): string {
   return colorSwatch[k] || '#9CA3AF';
 }
 
-export function PillOverlay({ pills, photo }: { pills: PillResult[]; photo?: string | null }) {
+export function PillOverlay({
+  pills,
+  photo,
+  onAddToCabinet,
+}: {
+  pills: PillResult[];
+  photo?: string | null;
+  onAddToCabinet?: (name: string) => void;
+}) {
   return (
     <div className="space-y-4">
       {photo && (
@@ -48,8 +46,11 @@ export function PillOverlay({ pills, photo }: { pills: PillResult[]; photo?: str
       <div className="space-y-3">
         {pills.map((pill, i) => {
           const cabinetMatch = pill.inCabinet && pill.match.confidence >= 0.75;
-          const fdaMatch = !pill.inCabinet && pill.fdaInfo && pill.match.medicationName;
-          const totallyUnknown = !cabinetMatch && !fdaMatch;
+          // Has a name (from Gemini or RxImage) but no FDA detail — still show it
+          const nameKnown = !!pill.match.medicationName && !pill.inCabinet;
+          const fdaMatch = nameKnown && pill.fdaInfo;
+          const nameOnly = nameKnown && !pill.fdaInfo; // name read but no db match
+          const totallyUnknown = !cabinetMatch && !nameKnown;
 
           return (
             <Card key={i} className="p-4 flex items-start gap-4">
@@ -84,6 +85,34 @@ export function PillOverlay({ pills, photo }: { pills: PillResult[]; photo?: str
                     {pill.fdaInfo!.warnings.length > 0 && (
                       <p className="text-xs text-caution mt-1">⚠ {pill.fdaInfo!.warnings[0]}</p>
                     )}
+                    {onAddToCabinet && (
+                      <button
+                        onClick={() => onAddToCabinet(pill.match.medicationName!)}
+                        className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-med-accent hover:opacity-80 active:scale-95 transition-all"
+                      >
+                        <PlusCircle className="w-4 h-4" /> Add to cabinet
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {nameOnly && (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-lg font-semibold">{pill.match.medicationName}</p>
+                      <Badge variant="caution">Not in cabinet</Badge>
+                    </div>
+                    <p className="text-sm text-muted mt-0.5">
+                      {pill.imprint ? `Imprint: "${pill.imprint}"` : `${pill.color} ${pill.shape}`}
+                    </p>
+                    {onAddToCabinet && (
+                      <button
+                        onClick={() => onAddToCabinet(pill.match.medicationName!)}
+                        className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-med-accent hover:opacity-80 active:scale-95 transition-all"
+                      >
+                        <PlusCircle className="w-4 h-4" /> Add to cabinet
+                      </button>
+                    )}
                   </>
                 )}
 
@@ -97,13 +126,13 @@ export function PillOverlay({ pills, photo }: { pills: PillResult[]; photo?: str
                       {pill.color} {pill.shape}
                       {pill.imprint && ` · imprint "${pill.imprint}"`}
                     </p>
-                    <p className="text-xs text-muted mt-1">Scan the bottle for details.</p>
+                    <p className="text-xs text-muted mt-1">Scan the bottle for better results.</p>
                   </>
                 )}
               </div>
 
-              <Badge variant={cabinetMatch ? 'ok' : fdaMatch ? 'info' : 'caution'} className="shrink-0">
-                {cabinetMatch || fdaMatch
+              <Badge variant={cabinetMatch ? 'ok' : fdaMatch || nameOnly ? 'info' : 'caution'} className="shrink-0">
+                {cabinetMatch || fdaMatch || nameOnly
                   ? Math.round(pill.match.confidence * 100) + '%'
                   : '?'}
               </Badge>
