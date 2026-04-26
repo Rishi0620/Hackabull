@@ -92,7 +92,7 @@ export const LOCAL_ANSWER_PROMPT = (
   meds: string,
   doses: string,
   query: string
-) => `You are MedMate, a calm, clear voice assistant for a household's medications.
+) => `You are MedSNAP, a calm, clear voice assistant for a household's medications.
 
 Members: ${members}
 Medications: ${meds}
@@ -105,7 +105,7 @@ Question: ${query}`;
 export const CLOUD_ANSWER_PROMPT = (
   context: string,
   query: string
-) => `You are MedMate, a careful medical information assistant. You are NOT a doctor — always recommend consulting a healthcare provider for serious questions.
+) => `You are MedSNAP, a careful medical information assistant. You are NOT a doctor — always recommend consulting a healthcare provider for serious questions.
 
 Household context: ${context}
 

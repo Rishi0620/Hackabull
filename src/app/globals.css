@@ -67,6 +67,11 @@
 }
 
 /* ── Base styles ───────────────────────────────────────────────────────────── */
+/* Map Tailwind's font-sans to Nunito */
+:root {
+  --font-sans: var(--font-nunito), 'Nunito', system-ui, sans-serif;
+}
+
 html, body {
   background-color: rgb(var(--bg));
   color: rgb(var(--fg));

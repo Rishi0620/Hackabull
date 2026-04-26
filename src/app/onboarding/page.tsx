@@ -74,7 +74,7 @@ export default function OnboardingPage() {
                 <Pill className="w-12 h-12 text-black" aria-hidden="true" />
               </div>
 
-              <h1 className="text-4xl font-bold text-fg mb-3">MedMate</h1>
+              <h1 className="text-4xl font-bold text-fg mb-3">MedSNAP</h1>
               <p className="text-xl text-med-muted text-center mb-10">
                 Your medicine cabinet, but smarter.
               </p>

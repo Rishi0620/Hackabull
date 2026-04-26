@@ -1,91 +1,143 @@
-# MedMate
+# MedSNAP
 
-> Your medicine cabinet, but smarter. Scan once, remember forever. Voice-first, privacy-first, FDA-verified.
+> Scan a pill bottle. Understand what's inside. Catch dangerous interactions. Ask questions with your voice.
 
-A PWA that turns a household's medicine cabinet into a verified, voice-accessible knowledge graph for elderly users, caregivers, and families.
+MedSNAP is a PWA that turns a household medicine cabinet into a verified, voice-accessible medication assistant — built for elderly users, caregivers, and families managing multiple prescriptions.
 
-Built for **Hackabull** — Tracks: Tech for Good, UX/UI, Healthcare, Best Use of Gemini API, Best Use of MongoDB, Best Use of Gemma.
+**Live:** https://medmate-hackabull.vercel.app
+
+Built for **Hackabull 2026** — Tracks: Tech for Good · UX/UI · Healthcare · Gemini API · MongoDB · Gemma 4 · ElevenLabs
+
+---
+
+## What it does
+
+- **Scan a bottle** — Point the camera at any prescription or OTC label. Gemini Vision extracts the drug name, dosage, warnings, and active ingredients. Every result is cross-checked against the FDA's official drug database and rewritten in plain language at a 6th-grade reading level.
+- **Identify pills** — Pour pills into your palm, take a photo. Gemini reads the imprint code and we look it up in NLM's RxImage database to confirm identity — the same database pill identifier apps use. Dangerous combinations are flagged instantly.
+- **Catch interactions** — Every scan is checked against everything else in the household cabinet. Warfarin + ibuprofen fires a red warning the moment you scan it.
+- **Ask questions by voice** — ElevenLabs speaks the answers aloud. Household-specific questions (dose history, cabinet contents) are answered by Gemma 4. Medical knowledge questions go to Gemini 2.5.
+- **Track doses** — Today's schedule lives on the home screen. Mark doses taken with one tap.
+
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router), Tailwind CSS, Nunito font |
+| Camera | `getUserMedia` — works on iOS Safari + Android Chrome, no app required |
+| Vision AI | Gemini 2.5 Flash — bottle extraction, pill identification, plain-language rewriting |
+| Voice AI | Gemma 4 (`gemma-4-26b-a4b-it`) for household queries, ElevenLabs for speech output |
+| Drug databases | OpenFDA (verification), DailyMed (structured labels), NLM RxImage (pill ID by imprint) |
+| Storage | MongoDB Atlas — household graph, medication records, dose history, interaction cache |
+| Hosting | Vercel (PWA, HTTPS, edge functions) |
 
 ---
 
 ## Quickstart
 
-### 1. Install dependencies
 ```bash
 npm install
-```
-
-### 2. Configure environment
-Copy `.env.example` to `.env.local` and fill in:
-```
-MONGODB_URI=mongodb+srv://...
-MONGODB_DB=medmate
-GOOGLE_AI_API_KEY=your-gemini-key
-GEMINI_MODEL=gemini-2.0-flash-exp
-```
-
-- **MongoDB Atlas:** create a free M0 cluster at https://cloud.mongodb.com, allow access from anywhere (0.0.0.0/0) for the demo, copy the connection string.
-- **Gemini API key:** https://aistudio.google.com/apikey
-
-### 3. (Optional) Seed demo data
-```bash
-npm run seed
-```
-Creates a "Demo Family" household with Dad (Lisinopril, Metformin) and Mom (Warfarin) so the cabinet isn't empty for the demo.
-
-### 4. Run
-```bash
+cp .env.example .env.local   # fill in MONGODB_URI and GOOGLE_AI_API_KEY
 npm run dev
 ```
-Open http://localhost:3000 on your phone (must be HTTPS or localhost for camera/mic access).
 
-For phone testing on the same wifi, deploy to Vercel — it gives you HTTPS and a QR-friendly URL in one command:
+Open http://localhost:3000. Camera and microphone require HTTPS or localhost.
+
+### Environment variables
+
+| Variable | Value |
+|---|---|
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `MONGODB_DB` | `medmate` |
+| `GOOGLE_AI_API_KEY` | Gemini + Gemma API key (aistudio.google.com) |
+| `GEMINI_MODEL` | `gemini-2.5-flash` |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key |
+| `ELEVENLABS_VOICE_ID` | Voice ID from your ElevenLabs account |
+
+### Seed demo data
+
 ```bash
-npx vercel
+# Small demo: Dad (Lisinopril, Metformin) + Mom (Warfarin)
+MONGODB_URI=... MONGODB_DB=medmate npx tsx scripts/seed-demo.ts
+
+# Full demo: The Martinez Family — 4 members, 13 medications, 35 days of dose history
+MONGODB_URI=... MONGODB_DB=medmate npx tsx scripts/seed-rich-demo.ts
 ```
 
 ---
 
-## Architecture
+## Deploy
 
-- **Frontend:** Next.js 15 (App Router) PWA, Tailwind, shadcn-style primitives.
-- **Camera:** `getUserMedia` — works on iOS Safari + Android Chrome.
-- **Voice:** Web Speech API for STT + TTS.
-- **On-device inference:** Gemma 3 routing layer (`src/lib/gemma.ts`). Local queries get answered without a network call — toggle airplane mode during the demo to prove it.
-- **Cloud inference:** Gemini 2.0 Flash for vision (bottle extraction, pill identification) and reasoning (interactions, plain-language).
-- **Verification:** OpenFDA `/drug/label.json` cross-check on every scan. The AI never gets the last word on dosage.
-- **Storage:** MongoDB Atlas — household graph (members, medications, scans, doses, interactions cache).
+See [DEPLOY.md](DEPLOY.md) for the full deployment guide. The short version:
+
+```bash
+vercel --prod --yes   # deploys in ~60 seconds, same URL every time
+```
 
 ---
 
-## Demo flow (90 seconds)
+## API routes
 
-1. **Scan a bottle.** Gemini extracts → OpenFDA verifies → plain-language card appears.
-2. **Identify pills in palm.** Pour 3 pills, take a photo. Each is labeled with name + member + dose.
-3. **Watch the conflict warning fire.** Warfarin + ibuprofen lights up red.
-4. **Toggle airplane mode.** Tap mic, ask "Did Dad take his morning pill?" — answered locally by Gemma.
-5. **Open an info card.** "Verified against OpenFDA" badge proves we don't trust the LLM alone.
+| Route | Purpose |
+|---|---|
+| `POST /api/scan/bottle` | Image → Gemini extraction → FDA verification → plain language |
+| `POST /api/scan/pills` | Image → Gemini imprint reading → RxImage lookup → DailyMed info |
+| `GET /api/medication?householdId=` | All active medications for a household |
+| `POST /api/dose/log` | Mark a dose taken (finds scheduled dose in ±4h window) |
+| `GET /api/voice/context?householdId=` | Today's dose schedule for Gemma context |
+| `POST /api/gemma/answer` | Gemma 4 answers household-specific voice queries |
+| `POST /api/voice/query` | Gemini answers medical knowledge questions |
+| `POST /api/elevenlabs/speak` | Text → ElevenLabs audio (mp3) |
+| `POST /api/interactions/check` | Check ingredient list against static interaction database |
+
+---
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                 Home — member row, action grid, today's doses, recent meds
+│   ├── cabinet/                 Medicine cabinet — pill bottle visualization, grouped by member
+│   ├── scan/bottle/             Bottle scanner — member picker → camera → result
+│   ├── scan/pills/              Pill identifier — camera → RxImage lookup → overlay
+│   ├── medication/[id]/         Medication detail — plain language, warnings, log dose
+│   ├── voice/                   Voice assistant — Gemma 4 / Gemini routing, ElevenLabs TTS
+│   ├── onboarding/              First-run setup
+│   └── api/                     All API routes
+├── components/
+│   ├── TodaysDoses.tsx          Home screen dose tracker with expand/collapse
+│   ├── med-card.tsx             Medication list card
+│   ├── member-avatar.tsx        Color-coded member avatar
+│   └── ...                      Camera, voice, warning banner, app shell
+├── lib/
+│   ├── gemini.ts                Gemini API wrapper (vision + text)
+│   ├── gemma.ts                 Gemma 4 routing logic
+│   ├── openfda.ts               OpenFDA label + NDC lookup
+│   ├── dailymed.ts              DailyMed structured label data
+│   ├── rximage.ts               NLM RxImage pill identification by imprint
+│   ├── interactions.ts          Static top-20 drug interaction list
+│   ├── mongo.ts                 MongoDB client + typed collections
+│   └── prompts.ts               All AI prompts in one place
+└── data/
+    └── interactions-top200.json Top drug interactions (static, no API needed)
+```
 
 ---
 
 ## Tracks
 
-- **Tech for Good** — elderly polypharmacy, ~7,000 US deaths/year from medication errors.
-- **UX/UI** — large text by default, voice-first, AAA contrast, member color coding.
-- **Healthcare** — real OpenFDA verification, real interaction checking.
-- **Gemini API** — multimodal vision + plain-language rewriting + reasoning.
-- **MongoDB** — household graph: members, medications, scans, doses, interactions cache.
-- **Gemma** — on-device routing for privacy-sensitive queries.
+**Tech for Good** — Medication errors kill ~7,000 Americans per year, mostly elderly people misreading labels. MedSNAP makes the label readable for anyone, in any language, without reading glasses or a pharmacy degree.
 
----
+**UX/UI** — Designed specifically for users with reduced vision and motor control. 56px minimum touch targets, 18px minimum body text, AAA contrast, voice-first navigation, Nunito for readability. Every design decision serves the user, not the aesthetic.
 
-## Folder map
+**Healthcare** — Three independent drug databases: OpenFDA for label verification, DailyMed for structured drug information, NLM RxImage for pill identification by imprint code. The AI never gets the final word on dosage — the FDA does.
 
-```
-src/
-├── app/                  Next.js routes (pages + API)
-├── components/           UI components
-├── hooks/                useHousehold, useVoice, useGemma
-├── lib/                  mongo, gemini, gemma, openfda, prompts, schema, interactions, speech
-└── data/                 Static interaction list
-```
+**Gemini API** — Multimodal pipeline: Gemini reads bottle labels and pill imprints from photos, rewrites drug information in plain language, and reasons about medical questions. Used for both vision and text generation.
+
+**MongoDB** — Document store for the household medication graph: members, medications (with embedded active ingredients and warnings), scans, dose logs, and cached interactions. Atlas Vector Search enabled for semantic pill matching.
+
+**Gemma 4** — `gemma-4-26b-a4b-it` handles household-specific voice queries (dose history, cabinet contents) via the Google AI API. Medical knowledge questions route to Gemini instead. The routing decision is explicit and shown to the user.
+
+**ElevenLabs** — All voice output goes through ElevenLabs TTS. The voice page speaks every answer aloud automatically. Falls back to browser speech synthesis if ElevenLabs is unavailable.

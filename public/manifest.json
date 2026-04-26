@@ -1,6 +1,6 @@
 {
-  "name": "MedMate",
-  "short_name": "MedMate",
+  "name": "MedSNAP",
+  "short_name": "MedSNAP",
   "description": "Your medicine cabinet, but smarter.",
   "start_url": "/",
   "display": "standalone",

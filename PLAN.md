@@ -1,4 +1,4 @@
-# MedMate — Hackabull Build Plan
+# MedSNAP — Hackabull Build Plan
 
 > Household medication memory. Scan once, remember forever. Voice-first, privacy-first, verified against the FDA.
 
@@ -445,7 +445,7 @@ Output: LOCAL or CLOUD only.
 
 ### 9.5 Local Gemma answer prompt
 ```
-You are MedMate, a calm, clear voice assistant for a household's medications.
+You are MedSNAP, a calm, clear voice assistant for a household's medications.
 You have access to this data:
 
 Members: {MEMBERS}
@@ -463,7 +463,7 @@ Question: {USER_QUERY}
 ## 10. UX Flow
 
 ### 10.1 First-run (60 seconds)
-1. Splash → "MedMate. Your medicine cabinet, but smarter."
+1. Splash → "MedSNAP. Your medicine cabinet, but smarter."
 2. "Who is this for?" → Just me / My family / I'm a caregiver
 3. Add first member (name, optional photo).
 4. "Let's scan your first bottle." → camera permission → first scan.
@@ -526,7 +526,7 @@ Question: {USER_QUERY}
 **Setup:** 3 real bottles (or printed labels) on the table. Phone in airplane mode toggle ready.
 
 **0:00 — Hook (10s)**
-> "Every year, 7,000 Americans die from preventable medication errors. Most happen at home, with people who can't read the tiny print on their bottle. This is MedMate."
+> "Every year, 7,000 Americans die from preventable medication errors. Most happen at home, with people who can't read the tiny print on their bottle. This is MedSNAP."
 
 **0:10 — Scan (20s)**
 - Scan bottle 1 (Lisinopril) → "This is your blood pressure medicine. One pill every morning." Plain language appears.
@@ -549,7 +549,7 @@ Question: {USER_QUERY}
 - Tap an info icon: "Every dosage was cross-checked against the FDA's official drug database. We don't trust the AI alone."
 
 **1:25 — Close (5s)**
-> "MedMate. Built in 36 hours. Saves lives."
+> "MedSNAP. Built in 36 hours. Saves lives."
 
 ---
 

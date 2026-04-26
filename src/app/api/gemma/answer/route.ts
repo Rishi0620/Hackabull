@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       .filter((d) => !d.takenAt)
       .map((d) => `${d.medication} (${d.member}) due ${new Date(d.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
 
-    const prompt = `You are MedMate. Give a direct answer in 1-2 plain sentences. No reasoning, no bullet points, no explanation. Just the answer.
+    const prompt = `You are MedSNAP. Give a direct answer in 1-2 plain sentences. No reasoning, no bullet points, no explanation. Just the answer.
 
 Meds: ${medsText || 'none'}
 Taken today: ${taken.length ? taken.join(', ') : 'none yet'}

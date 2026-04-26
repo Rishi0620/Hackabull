@@ -55,11 +55,14 @@ export async function GET(req: NextRequest) {
       recentDoses: dedupedDoses
         .filter((d) => medMap.has(d.medicationId.toString()))
         .map((d) => ({
+          doseId: d._id?.toString() || null,
+          medicationId: d.medicationId.toString(),
           medication: medMap.get(d.medicationId.toString()) || '',
           member: memMap.get(d.memberId.toString()) || '',
           takenAt: d.takenAt?.toISOString() || null,
           scheduledAt: d.scheduledAt.toISOString(),
-        })),
+        }))
+        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

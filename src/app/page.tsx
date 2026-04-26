@@ -12,6 +12,7 @@ import { MedCard } from '@/components/med-card'
 import { LoadingSpinner } from '@/components/loading-spinner'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Member, Medication } from '@/lib/types'
+import { TodaysDoses, type DoseEntry } from '@/components/TodaysDoses'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -73,6 +74,7 @@ export default function HomePage() {
   const { household, loaded } = useHousehold()
   const [members, setMembers] = useState<Member[]>([])
   const [medications, setMedications] = useState<Medication[]>([])
+  const [todayDoses, setTodayDoses] = useState<DoseEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Redirect to onboarding if no household
@@ -89,9 +91,10 @@ export default function HomePage() {
     async function fetchData() {
       try {
         const hid = household!.householdId
-        const [householdRes, medsRes] = await Promise.all([
+        const [householdRes, medsRes, dosesRes] = await Promise.all([
           fetch(`/api/household?id=${hid}`),
           fetch(`/api/medication?householdId=${hid}`),
+          fetch(`/api/voice/context?householdId=${hid}`),
         ])
 
         if (householdRes.ok) {
@@ -102,6 +105,11 @@ export default function HomePage() {
         if (medsRes.ok) {
           const data = await medsRes.json()
           setMedications(data.medications || [])
+        }
+
+        if (dosesRes.ok) {
+          const data = await dosesRes.json()
+          setTodayDoses(data.recentDoses || [])
         }
       } catch (err) {
         console.error('[v0] Failed to fetch data:', err)
@@ -199,6 +207,20 @@ export default function HomePage() {
             })}
           </div>
         </section>
+
+        {/* Today's doses */}
+        <TodaysDoses
+          doses={todayDoses}
+          onDoseLogged={(medicationId) => {
+            setTodayDoses((prev) =>
+              prev.map((d) =>
+                d.medicationId === medicationId && !d.takenAt
+                  ? { ...d, takenAt: new Date().toISOString() }
+                  : d
+              )
+            )
+          }}
+        />
 
         {/* Recent medications */}
         <section aria-label="Recent medications">

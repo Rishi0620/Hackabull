@@ -286,7 +286,7 @@ export default function VoicePage() {
       <div className="flex flex-col h-[calc(100vh-96px)] px-6 py-8">
         {/* Header */}
         <header className="mb-6">
-          <h1 className="text-3xl font-bold text-fg mb-2">Ask MedMate</h1>
+          <h1 className="text-3xl font-bold text-fg mb-2">Ask MedSNAP</h1>
           <p className="text-lg text-med-muted">Voice or tap a question.</p>
 
           {/* Status badges */}

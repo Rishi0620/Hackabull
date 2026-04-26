@@ -1,27 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Nunito } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
-const geist = Geist({ 
-  subsets: ["latin"],
-  variable: '--font-geist-sans',
-})
-
-const geistMono = Geist_Mono({ 
-  subsets: ["latin"],
-  variable: '--font-geist-mono',
+const nunito = Nunito({
+  subsets: ['latin'],
+  variable: '--font-nunito',
+  weight: ['400', '500', '600', '700', '800'],
 })
 
 export const metadata: Metadata = {
-  title: 'MedMate',
-  description: 'Your medicine cabinet, but smarter. Scan bottles, catch interactions, get voice answers.',
+  title: 'MedSNAP',
+  description: 'Scan medication bottles, catch dangerous interactions, get voice answers.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'MedMate',
+    title: 'MedSNAP',
   },
   icons: {
     icon: '/icon.svg',
@@ -43,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={nunito.variable} suppressHydrationWarning>
       <body className="font-sans antialiased min-h-screen">
         <ThemeProvider
           attribute="class"
