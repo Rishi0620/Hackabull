@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiVisionJson, geminiJson } from '@/lib/gemini';
 import { lookupLabelByName, lookupLabelByNdc, compareWithFda } from '@/lib/openfda';
+import { lookupByName as dailyMedByName, lookupByNdc as dailyMedByNdc } from '@/lib/dailymed';
 import { BOTTLE_EXTRACTION_PROMPT, PLAIN_LANGUAGE_PROMPT } from '@/lib/prompts';
 import { BottleExtractionSchema, PlainLanguageSchema } from '@/lib/schema';
 import { medications, scans, doses, ObjectId } from '@/lib/mongo';
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
     const fdaCheck = compareWithFda(parsed.dosageInstructions, parsed.warnings, fda);
 
-    const labelText = [
+    let labelText = [
       `Brand: ${parsed.brandName}`,
       `Generic: ${parsed.genericName || ''}`,
       `Dosage: ${parsed.dosageInstructions}`,
@@ -60,13 +61,23 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join('\n');
 
+    // Try DailyMed for a structured "purpose" field — much better than raw FDA text
+    const dm = parsed.ndc
+      ? await dailyMedByNdc(parsed.ndc)
+      : await dailyMedByName(parsed.genericName || parsed.brandName);
+    if (dm?.purpose) {
+      // Inject DailyMed's purpose into the label text for Gemini to rewrite
+      labelText += `\nPurpose: ${dm.purpose}`;
+    }
+
     let plain;
     try {
       const rawPlain = await geminiJson<any>(PLAIN_LANGUAGE_PROMPT(6, labelText));
       plain = PlainLanguageSchema.parse(rawPlain);
     } catch {
+      // If Gemini fails, use DailyMed data directly if available
       plain = {
-        whatItDoes: parsed.brandName + ' — see your pharmacist for what this does.',
+        whatItDoes: dm?.purpose || dm?.indications || parsed.brandName + ' — ask your pharmacist what this does.',
         howToTake: parsed.dosageInstructions || 'Follow the label directions.',
         watchOutFor: parsed.warnings[0] || 'Read the warning label before taking.',
       };

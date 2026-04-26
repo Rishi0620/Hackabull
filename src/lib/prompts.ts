@@ -20,8 +20,9 @@ Rules:
 - Keep brandName as it appears on the label, genericName lowercase.
 - Do not include any text outside the JSON object.`;
 
-export const PILL_IDENTIFICATION_PROMPT = (knownMeds: string) => `Identify each distinct pill in this image. Return ONLY valid JSON:
+export const PILL_IDENTIFICATION_PROMPT = (knownMeds: string) => `You are a pharmaceutical pill identification assistant. Your primary job is to READ THE IMPRINT CODE stamped on each pill — this is the most important field.
 
+Return ONLY valid JSON:
 {
   "pills": [
     {
@@ -39,7 +40,24 @@ export const PILL_IDENTIFICATION_PROMPT = (knownMeds: string) => `Identify each 
 Known medications in this household:
 ${knownMeds}
 
-For each pill, return the most likely match (or null with confidence < 0.6). Do not include any text outside the JSON object.`;
+IMPRINT READING INSTRUCTIONS — this is critical:
+- Examine every surface of each pill closely for stamped or debossed text or numbers.
+- Common imprint formats: "L374", "BENADRYL", "IP 466", "APO 10", "BI 25", "DAN 5555", "Watson 540".
+- Capsules often have text printed on the capsule body — look carefully.
+- Even partial imprints are useful — report what you can see (e.g. "B25" or "BENAD").
+- If the imprint is illegible due to image quality, set imprint to null. Do NOT guess.
+
+Matching rules:
+1. If you read an imprint: set it in the imprint field. Do NOT try to match it yourself — we will look it up in a pharmaceutical database.
+2. Set medicationName only if you see a brand name printed on the pill (e.g. "BENADRYL" text on capsule) or the imprint exactly matches a household medication name.
+3. If no readable imprint: confidence must be below 0.4. Color and shape alone are not sufficient.
+4. Never force a match to a cabinet medication based on color/shape similarity alone.
+
+Do not include any text outside the JSON object.
+5. Never match purely on color/shape/size. A yellow capsule is not automatically Vitamin D.
+6. If you cannot identify the pill with reasonable certainty, return medicationName: null and confidence: 0.
+
+Do not include any text outside the JSON object.`;
 
 export const PLAIN_LANGUAGE_PROMPT = (gradeLevel: number, label: string) => `Rewrite this medication information for someone reading at a ${gradeLevel}th-grade level. Use short sentences. Avoid medical jargon. If you must use a medical term, define it in parentheses.
 

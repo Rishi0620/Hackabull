@@ -1,30 +1,50 @@
-import { cn } from '@/lib/utils';
+import * as React from 'react'
+import { Slot } from '@radix-ui/react-slot'
+import { cva, type VariantProps } from 'class-variance-authority'
 
-export function Badge({
-  variant = 'default',
+import { cn } from '@/lib/utils'
+
+const badgeVariants = cva(
+  'inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
+  {
+    variants: {
+      variant: {
+        default:
+          'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90',
+        secondary:
+          'border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
+        destructive:
+          'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+        outline:
+          'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        info: 'border-transparent bg-[#14B8A6]/15 text-[#14B8A6]',
+        ok: 'border-transparent bg-[#22C55E]/15 text-[#22C55E]',
+        danger: 'border-transparent bg-[#DC2626]/15 text-[#DC2626]',
+        caution: 'border-transparent bg-[#EAB308]/15 text-[#EAB308]',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  },
+)
+
+function Badge({
   className,
-  children,
-}: {
-  variant?: 'default' | 'danger' | 'caution' | 'ok' | 'info';
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const styles: Record<string, string> = {
-    default: 'bg-card text-fg border-border',
-    danger: 'bg-danger/15 text-danger border-danger/30',
-    caution: 'bg-caution/15 text-caution border-caution/30',
-    ok: 'bg-ok/15 text-ok border-ok/30',
-    info: 'bg-accent/15 text-accent border-accent/30',
-  };
+  variant,
+  asChild = false,
+  ...props
+}: React.ComponentProps<'span'> &
+  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? Slot : 'span'
+
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium',
-        styles[variant],
-        className
-      )}
-    >
-      {children}
-    </span>
-  );
+    <Comp
+      data-slot="badge"
+      className={cn(badgeVariants({ variant }), className)}
+      {...props}
+    />
+  )
 }
+
+export { Badge, badgeVariants }

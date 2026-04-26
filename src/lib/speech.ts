@@ -18,10 +18,13 @@ type SpeechRecognitionInstance = {
   onend: (() => void) | null;
 };
 
+// SpeechRecognition global — use 'any' to avoid conflicts with lib.dom.d.ts
 declare global {
   interface Window {
-    SpeechRecognition?: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    SpeechRecognition: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    webkitSpeechRecognition: any;
   }
 }
 

@@ -1,257 +1,408 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { CameraCapture } from '@/components/camera/CameraCapture';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { WarningBanner } from '@/components/interactions/WarningBanner';
-import { MemberAvatar } from '@/components/members/MemberAvatar';
-import { useHousehold } from '@/hooks/useHousehold';
-import { CheckCircle, ShieldCheck, Volume2 } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Volume2, Shield, AlertTriangle, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useHousehold } from '@/hooks/use-household'
+import { MemberAvatar } from '@/components/member-avatar'
+import { WarningBanner } from '@/components/warning-banner'
+import { CameraCapture } from '@/components/camera-capture'
+import { LoadingSpinner } from '@/components/loading-spinner'
+import { Member, ScanResult, MEMBER_COLOR_MAP, MemberColor } from '@/lib/types'
 
-type Member = { _id: string; name: string; avatarColor: string };
+function resolveHex(avatarColor: string): string {
+  if (!avatarColor) return '#14B8A6'
+  if (avatarColor.startsWith('#')) return avatarColor
+  return MEMBER_COLOR_MAP[avatarColor as MemberColor]?.hex ?? '#14B8A6'
+}
 
-type ScanResult = {
-  medicationId: string;
-  extracted: {
-    brandName: string;
-    genericName?: string | null;
-    dosageInstructions: string;
-    activeIngredients: { name: string; strength: string }[];
-    confidence: string;
-  };
-  plainLanguage: { whatItDoes: string; howToTake: string; watchOutFor: string };
-  fdaVerified: boolean;
-  fdaWarnings: string[];
-  interactions: { with: string; severity: string; summary: string; plainLanguage: string }[];
-};
-
-type Step = 'pick-member' | 'camera' | 'loading' | 'result' | 'error';
+type Step = 'member' | 'camera' | 'loading' | 'result'
 
 export default function ScanBottlePage() {
-  const router = useRouter();
-  const { household, loaded } = useHousehold();
-  const [step, setStep] = useState<Step>('pick-member');
-  const [members, setMembers] = useState<Member[]>([]);
-  const [memberId, setMemberId] = useState<string | null>(null);
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const { household, loaded } = useHousehold()
+  const [step, setStep] = useState<Step>('member')
+  const [members, setMembers] = useState<Member[]>([])
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  // Redirect to onboarding if no household
   useEffect(() => {
-    if (!loaded) return;
-    if (!household) { router.replace('/onboarding'); return; }
-    fetch(`/api/household?id=${household.householdId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const mems: Member[] = d.members || [];
-        setMembers(mems);
-        const defaultId = household.activeMemberId || mems[0]?._id || null;
-        setMemberId(defaultId);
-        // Skip picker if only one member
-        if (mems.length <= 1) setStep('camera');
-      });
-  }, [loaded, household, router]);
-
-  async function onCapture(image: string) {
-    if (!household || !memberId) { setError('No member selected.'); setStep('error'); return; }
-    setStep('loading');
-    setError(null);
-    try {
-      const res = await fetch('/api/scan/bottle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image, householdId: household.householdId, memberId, language: 'en' }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Scan failed');
-      setResult(await res.json());
-      setStep('result');
-    } catch (e: any) {
-      setError(e.message);
-      setStep('error');
+    if (loaded && !household) {
+      router.replace('/onboarding')
     }
-  }
+  }, [loaded, household, router])
 
-  async function speakResult(r: ScanResult) {
-    const text = `${r.extracted.brandName}. ${r.plainLanguage.whatItDoes} ${r.plainLanguage.howToTake} ${r.plainLanguage.watchOutFor}`;
+  // Fetch members
+  useEffect(() => {
+    if (!household?.householdId) return
+
+    async function fetchMembers() {
+      try {
+        const res = await fetch(`/api/household?id=${household!.householdId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setMembers(data.members || [])
+
+          // If only one member, skip member selection
+          if (data.members?.length === 1) {
+            setSelectedMember(data.members[0])
+            setStep('camera')
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Failed to fetch members:', err)
+      }
+    }
+
+    fetchMembers()
+  }, [household?.householdId])
+
+  const handleCapture = useCallback(
+    async (imageBase64: string) => {
+      if (!household || !selectedMember) return
+
+      setStep('loading')
+      setError(null)
+
+      try {
+        const res = await fetch('/api/scan/bottle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: imageBase64,
+            householdId: household.householdId,
+            memberId: selectedMember._id,
+          }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setScanResult(data)
+          setStep('result')
+        } else {
+          throw new Error('Scan failed')
+        }
+      } catch (err) {
+        console.error('[v0] Scan failed:', err)
+        setError('Could not read the label. Please try again with better lighting.')
+        setStep('camera')
+      }
+    },
+    [household, selectedMember]
+  )
+
+  const handleReadAloud = useCallback(async () => {
+    if (!scanResult || isSpeaking) return
+
+    setIsSpeaking(true)
+
     try {
+      const textToSpeak = `${scanResult.extracted.brandName}. ${scanResult.plainLanguage.whatItDoes}. ${scanResult.plainLanguage.howToTake}. ${scanResult.plainLanguage.watchOutFor}`
+
       const res = await fetch('/api/elevenlabs/speak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error('TTS failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.play();
-    } catch {
-      // fallback to browser TTS
-      if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance(text);
-        window.speechSynthesis.speak(u);
+        body: JSON.stringify({ text: textToSpeak }),
+      })
+
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+        audio.onended = () => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(url)
+        }
+        audio.onerror = () => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(url)
+          speakWithBrowserTTS(textToSpeak)
+        }
+        audio.play().catch(() => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(url)
+          speakWithBrowserTTS(textToSpeak)
+        })
+      } else {
+        speakWithBrowserTTS(textToSpeak)
       }
+    } catch (err) {
+      console.error('[v0] Failed to read aloud:', err)
+      setIsSpeaking(false)
+    }
+  }, [scanResult, isSpeaking])
+
+  const speakWithBrowserTTS = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.onend = () => setIsSpeaking(false)
+      utterance.onerror = () => setIsSpeaking(false)
+      speechSynthesis.speak(utterance)
+    } else {
+      setIsSpeaking(false)
     }
   }
 
-  if (!loaded || !household) return null;
-
-  // ── Step 1: Member picker ─────────────────────────────────────────────────
-  if (step === 'pick-member') {
+  if (!loaded) {
     return (
-      <div className="max-w-md mx-auto px-5 py-10 flex flex-col min-h-svh">
-        <Button variant="ghost" size="sm" className="self-start mb-6" onClick={() => router.back()}>
-          ← Back
-        </Button>
-        <h1 className="text-3xl font-bold mb-2">Who is this for?</h1>
-        <p className="text-muted mb-8">Select the household member before scanning.</p>
-        <div className="grid grid-cols-2 gap-3">
-          {members.map((m) => (
-            <button
-              key={m._id}
-              onClick={() => { setMemberId(m._id); setStep('camera'); }}
-              className={`flex flex-col items-center gap-3 p-6 rounded-3xl border-2 transition-all active:scale-[0.97] ${
-                memberId === m._id
-                  ? 'border-accent bg-accent/10'
-                  : 'border-border bg-card'
-              }`}
-            >
-              <MemberAvatar name={m.name} color={m.avatarColor} size="lg" />
-              <span className="text-lg font-semibold">{m.name}</span>
-            </button>
-          ))}
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!household) return null
+
+  // Step 1: Member picker
+  if (step === 'member' && members.length > 1) {
+    return (
+      <div className="min-h-screen bg-bg">
+        <div className="w-full max-w-[430px] mx-auto px-6 py-8">
+          <h1 className="text-3xl font-bold text-fg mb-8">Who is this for?</h1>
+
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            {members.map((member) => {
+              const isSelected = selectedMember?._id === member._id
+              const hex = resolveHex(member.avatarColor)
+
+              return (
+                <button
+                  key={member._id}
+                  type="button"
+                  onClick={() => setSelectedMember(member)}
+                  className={cn(
+                    'p-5 rounded-2xl flex flex-col items-center gap-3 transition-all',
+                    'focus-visible:ring-4 focus-visible:ring-med-accent/50',
+                    'bg-med-card border border-med-border'
+                  )}
+                  style={isSelected ? { outline: `2px solid ${hex}`, outlineOffset: '2px' } : {}}
+                >
+                  <MemberAvatar name={member.name} color={member.avatarColor} size="lg" />
+                  <span className="text-xl font-medium text-fg">{member.name}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setStep('camera')}
+            disabled={!selectedMember}
+            className={cn(
+              'w-full py-5 rounded-2xl font-bold text-xl transition-colors',
+              'focus-visible:ring-4 focus-visible:ring-med-accent/50',
+              selectedMember
+                ? 'bg-med-accent text-black active:scale-[0.98]'
+                : 'bg-med-card text-med-muted cursor-not-allowed'
+            )}
+          >
+            Start scanning
+          </button>
         </div>
       </div>
-    );
+    )
   }
 
-  // ── Step 2: Camera ────────────────────────────────────────────────────────
+  // Step 2: Camera
   if (step === 'camera') {
-    const selectedMember = members.find((m) => m._id === memberId);
     return (
-      <CameraCapture
-        prompt={`Scanning for ${selectedMember?.name ?? 'member'} — hold the label clearly in frame`}
-        onCapture={onCapture}
-        onCancel={() => (members.length > 1 ? setStep('pick-member') : router.back())}
-      />
-    );
+      <>
+        {error && (
+          <div className="fixed top-4 left-4 right-4 z-[60]">
+            <WarningBanner severity="caution" title="Scan failed" message={error} />
+          </div>
+        )}
+        <CameraCapture
+          prompt="Hold the label steady and in good light"
+          onCapture={handleCapture}
+          onCancel={() => router.push('/')}
+        />
+      </>
+    )
   }
 
-  // ── Step 3: Loading ───────────────────────────────────────────────────────
+  // Step 3: Loading
   if (step === 'loading') {
     return (
-      <div className="max-w-md mx-auto px-5 py-20 text-center">
-        <div className="w-20 h-20 mx-auto rounded-full border-4 border-accent border-t-transparent animate-spin" />
-        <p className="mt-6 text-xl font-semibold">Reading the label…</p>
-        <p className="text-muted text-base mt-2">Verifying against the FDA database.</p>
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6">
+        <LoadingSpinner size="lg" className="mb-6" />
+        <p className="text-2xl font-bold text-fg mb-2">Reading the label...</p>
+        <p className="text-lg text-med-muted">Verifying against the FDA database.</p>
       </div>
-    );
+    )
   }
 
-  // ── Step 4: Error ─────────────────────────────────────────────────────────
-  if (step === 'error') {
+  // Step 4: Result
+  if (step === 'result' && scanResult && selectedMember) {
+    const memberHex = resolveHex(selectedMember.avatarColor)
+    const hasInteractions = scanResult.interactions.length > 0
+    const hasFdaWarnings = scanResult.fdaWarnings.length > 0
+
     return (
-      <div className="max-w-md mx-auto px-5 py-10">
-        <Card className="p-6 bg-danger/10 border-danger">
-          <p className="text-xl font-bold text-danger">Could not read label</p>
-          <p className="text-base mt-2 text-fg/80">{error}</p>
-          <p className="text-sm text-muted mt-2">Make sure the text is in frame and well-lit.</p>
-          <div className="flex gap-3 mt-5">
-            <Button className="flex-1" onClick={() => setStep('camera')}>Try again</Button>
-            <Button variant="secondary" className="flex-1" onClick={() => router.push('/')}>Home</Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── Step 5: Result ────────────────────────────────────────────────────────
-  const selectedMember = members.find((m) => m._id === memberId);
-  return (
-    <div className="max-w-md mx-auto px-5 py-6 pb-24">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Scan result</h1>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/')}>Done</Button>
-      </header>
-
-      {result && (
-        <div className="space-y-4">
-          <Card className="p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-3xl font-bold">{result.extracted.brandName}</h2>
-                {result.extracted.genericName &&
-                  result.extracted.genericName.toLowerCase() !== result.extracted.brandName.toLowerCase() && (
-                    <p className="text-muted text-lg mt-1">{result.extracted.genericName}</p>
-                  )}
-                {selectedMember && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <MemberAvatar name={selectedMember.name} color={selectedMember.avatarColor} size="sm" />
-                    <span className="text-sm text-muted">For {selectedMember.name}</span>
-                  </div>
-                )}
-              </div>
-              <Button variant="ghost" size="icon" aria-label="Read aloud" onClick={() => speakResult(result)}>
-                <Volume2 className="w-6 h-6" />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {result.fdaVerified && (
-                <Badge variant="ok"><ShieldCheck className="w-4 h-4" /> FDA verified</Badge>
+      <div className="min-h-screen bg-bg">
+        <div className="w-full max-w-[430px] mx-auto px-6 py-8 pb-32">
+          {/* Header */}
+          <header className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-fg">Scan result</h1>
+            <Link
+              href="/"
+              className={cn(
+                'px-4 py-2 rounded-xl text-med-muted font-medium',
+                'focus-visible:ring-4 focus-visible:ring-med-accent/50'
               )}
-              <Badge variant="info">{result.extracted.confidence} confidence</Badge>
-            </div>
-          </Card>
+            >
+              Done
+            </Link>
+          </header>
 
-          <Card className="p-6">
-            <p className="text-sm uppercase tracking-wide text-muted font-semibold">What it does</p>
-            <p className="text-xl mt-2 leading-snug">{result.plainLanguage.whatItDoes}</p>
-          </Card>
-
-          <Card className="p-6">
-            <p className="text-sm uppercase tracking-wide text-muted font-semibold">How to take it</p>
-            <p className="text-xl mt-2 leading-snug">{result.plainLanguage.howToTake}</p>
-          </Card>
-
-          <Card className="p-6">
-            <p className="text-sm uppercase tracking-wide text-muted font-semibold">Watch out for</p>
-            <p className="text-xl mt-2 leading-snug">{result.plainLanguage.watchOutFor}</p>
-          </Card>
-
-          {result.interactions.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm uppercase tracking-wide text-muted font-semibold mt-2">Interactions detected</p>
-              {result.interactions.map((i, idx) => (
-                <WarningBanner key={idx} severity={i.severity as any} title={`Conflict with ${i.with}`} message={i.plainLanguage} />
+          {/* Interaction warnings */}
+          {hasInteractions && (
+            <div className="space-y-3 mb-6">
+              {scanResult.interactions.map((interaction, i) => (
+                <WarningBanner
+                  key={i}
+                  severity={interaction.severity}
+                  title={interaction.title}
+                  message={interaction.message}
+                />
               ))}
             </div>
           )}
 
-          {result.fdaWarnings.length > 0 && (
-            <Card className="p-5">
-              <p className="text-sm uppercase tracking-wide text-muted font-semibold">FDA warnings</p>
-              <ul className="list-disc list-inside text-fg/80 mt-2 space-y-1 text-sm">
-                {result.fdaWarnings.slice(0, 3).map((w, i) => (
-                  <li key={i}>{w.slice(0, 200)}</li>
-                ))}
-              </ul>
-            </Card>
-          )}
+          {/* Drug name card */}
+          <div className="bg-med-card rounded-2xl p-5 mb-6">
+            <p className="text-4xl font-bold text-fg mb-1">
+              {scanResult.extracted.brandName}
+            </p>
+            {scanResult.extracted.genericName && (
+              <p className="text-xl text-med-muted mb-4">
+                {scanResult.extracted.genericName}
+              </p>
+            )}
 
-          <div className="flex gap-3 pt-2">
-            <Button asChild className="flex-1">
-              <Link href={`/medication/${result.medicationId}`}>
-                <CheckCircle className="w-5 h-5" /> View details
-              </Link>
-            </Button>
-            <Button variant="secondary" className="flex-1" onClick={() => setStep('camera')}>
-              Scan another
-            </Button>
+            {/* Member and badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-base font-medium"
+                style={{ backgroundColor: `${memberHex}20`, color: memberHex }}
+              >
+                <MemberAvatar
+                  name={selectedMember.name}
+                  color={selectedMember.avatarColor}
+                  size="sm"
+                />
+                For {selectedMember.name}
+              </span>
+              {scanResult.fdaVerified && (
+                <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-med-ok/15 text-med-ok text-base font-medium">
+                  <Shield className="w-4 h-4" aria-hidden="true" />
+                  FDA verified
+                </span>
+              )}
+            </div>
+
+            {/* Read aloud button */}
+            <button
+              type="button"
+              onClick={handleReadAloud}
+              disabled={isSpeaking}
+              className={cn(
+                'w-full py-4 rounded-xl font-semibold text-lg transition-colors',
+                'focus-visible:ring-4 focus-visible:ring-med-accent/50',
+                'flex items-center justify-center gap-2',
+                isSpeaking
+                  ? 'bg-med-accent text-black'
+                  : 'bg-med-border text-fg'
+              )}
+            >
+              <Volume2 className="w-5 h-5" aria-hidden="true" />
+              {isSpeaking ? 'Speaking...' : 'Read aloud'}
+            </button>
+          </div>
+
+          {/* Info cards */}
+          <div className="space-y-4">
+            <div className="bg-med-card rounded-2xl p-5">
+              <p className="text-sm text-med-muted uppercase tracking-wide mb-2">
+                What it does
+              </p>
+              <p className="text-xl text-fg">{scanResult.plainLanguage.whatItDoes}</p>
+            </div>
+
+            <div className="bg-med-card rounded-2xl p-5">
+              <p className="text-sm text-med-muted uppercase tracking-wide mb-2">
+                How to take it
+              </p>
+              <p className="text-xl text-fg">{scanResult.plainLanguage.howToTake}</p>
+            </div>
+
+            <div className="bg-med-card rounded-2xl p-5">
+              <p className="text-sm text-med-muted uppercase tracking-wide mb-2">
+                Watch out for
+              </p>
+              <p className="text-xl text-fg">{scanResult.plainLanguage.watchOutFor}</p>
+            </div>
+
+            {/* FDA Warnings */}
+            {hasFdaWarnings && (
+              <div className="bg-med-card rounded-2xl p-5">
+                <p className="text-sm text-med-muted uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-med-caution" />
+                  FDA Warnings
+                </p>
+                <ul className="space-y-2 list-disc list-inside">
+                  {scanResult.fdaWarnings.map((warning, i) => (
+                    <li key={i} className="text-lg text-fg">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Bottom buttons */}
+        <div className="fixed bottom-0 left-0 right-0 bg-bg/95 backdrop-blur-sm border-t border-med-border p-4">
+          <div className="w-full max-w-[430px] mx-auto flex gap-3">
+            <Link
+              href={`/medication/${scanResult.medicationId}`}
+              className={cn(
+                'flex-1 py-5 rounded-2xl bg-med-accent text-black font-bold text-xl text-center',
+                'focus-visible:ring-4 focus-visible:ring-med-accent/50'
+              )}
+            >
+              View details
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setScanResult(null)
+                setError(null)
+                setStep('camera')
+              }}
+              className={cn(
+                'flex-1 py-5 rounded-2xl bg-med-card text-fg font-bold text-xl',
+                'focus-visible:ring-4 focus-visible:ring-med-accent/50'
+              )}
+            >
+              Scan another
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Default: show loading
+  return (
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <LoadingSpinner size="lg" />
     </div>
-  );
+  )
 }

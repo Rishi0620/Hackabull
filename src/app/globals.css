@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* ── Dark mode (default) ───────────────────────────────────────────────────── */
+:root,
+.dark {
   --bg: 10 10 10;
   --fg: 250 250 250;
   --muted: 148 163 184;
@@ -12,64 +14,110 @@
   --danger: 220 38 38;
   --caution: 234 179 8;
   --ok: 34 197 94;
+
+  --med-bg: #0A0A0A;
+  --med-card: #18181B;
+  --med-border: #27272A;
+  --med-accent: #14B8A6;
+  --med-muted: #94A3B8;
+  --med-danger: #DC2626;
+  --med-caution: #EAB308;
+  --med-ok: #22C55E;
+
+  --background: #0A0A0A;
+  --foreground: #FAFAFA;
+  --ring: #14B8A6;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: 255 255 255;
-    --fg: 10 10 10;
-    --muted: 100 116 139;
-    --card: 248 250 252;
-    --border: 226 232 240;
-    --accent: 13 148 136;
-    --danger: 220 38 38;
-    --caution: 202 138 4;
-    --ok: 22 163 74;
-  }
+/* ── Light mode ────────────────────────────────────────────────────────────── */
+.light {
+  --bg: 255 255 255;
+  --fg: 10 10 10;
+  --muted: 100 116 139;
+  --card: 248 250 252;
+  --border: 226 232 240;
+  --accent: 13 148 136;
+  --danger: 220 38 38;
+  --caution: 202 138 4;
+  --ok: 22 163 74;
+
+  --med-bg: #FFFFFF;
+  --med-card: #F8FAFC;
+  --med-border: #E2E8F0;
+  --med-accent: #0D9488;
+  --med-muted: #64748B;
+  --med-danger: #DC2626;
+  --med-caution: #CA8A04;
+  --med-ok: #16A34A;
+
+  --background: #FFFFFF;
+  --foreground: #0A0A0A;
+  --ring: #0D9488;
 }
 
-html,
-body {
-  background: rgb(var(--bg));
+/* ── Member colors (same in both modes) ───────────────────────────────────── */
+:root {
+  --member-teal: #14B8A6;
+  --member-sky: #38BDF8;
+  --member-violet: #A78BFA;
+  --member-amber: #FBBF24;
+  --member-emerald: #34D399;
+  --member-rose: #F472B6;
+  --radius: 0.625rem;
+}
+
+/* ── Base styles ───────────────────────────────────────────────────────────── */
+html, body {
+  background-color: rgb(var(--bg));
   color: rgb(var(--fg));
   -webkit-tap-highlight-color: transparent;
+  min-height: 100svh;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-* {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-html {
-  font-size: 17px;
-}
+html { font-size: 17px; }
 
 @media (max-width: 380px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-body {
-  min-height: 100svh;
-  font-feature-settings: 'rlig' 1, 'calt' 1, 'tnum' 1;
+  html { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
+/* ── Utility classes used by v0 components ────────────────────────────────── */
+.bg-bg { background-color: rgb(var(--bg)); }
+.bg-med-card { background-color: var(--med-card); }
+.bg-med-bg { background-color: var(--med-bg); }
+.border-med-border { border-color: var(--med-border); }
+.text-fg { color: rgb(var(--fg)); }
+.text-med-accent { color: var(--med-accent); }
+.text-med-muted { color: var(--med-muted); }
+.text-med-danger { color: var(--med-danger); }
+.bg-med-accent { background-color: var(--med-accent); }
+.hover\:bg-med-border:hover { background-color: var(--med-border); }
+.hover\:border-med-accent\/50:hover { border-color: color-mix(in srgb, var(--med-accent) 50%, transparent); }
+.focus-visible\:ring-med-accent\/50:focus-visible { --tw-ring-color: color-mix(in srgb, var(--med-accent) 50%, transparent); }
 
-input,
-textarea {
-  font-size: 16px;
-}
+/* member color classes */
+.bg-member-teal { background-color: var(--member-teal); }
+.bg-member-sky { background-color: var(--member-sky); }
+.bg-member-violet { background-color: var(--member-violet); }
+.bg-member-amber { background-color: var(--member-amber); }
+.bg-member-emerald { background-color: var(--member-emerald); }
+.bg-member-rose { background-color: var(--member-rose); }
+.text-member-teal { color: var(--member-teal); }
+.text-member-sky { color: var(--member-sky); }
+.text-member-violet { color: var(--member-violet); }
+.text-member-amber { color: var(--member-amber); }
+.text-member-emerald { color: var(--member-emerald); }
+.text-member-rose { color: var(--member-rose); }
+
+input, textarea { font-size: 16px; }
+button, a { -webkit-tap-highlight-color: transparent; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
