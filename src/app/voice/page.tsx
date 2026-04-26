@@ -47,6 +47,7 @@ export default function VoicePage() {
 
   const recognitionRef = useRef<any>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioUnlockedRef = useRef(false)
   // Refs so recognition event handlers always see current values (no stale closure)
   const voiceStateRef = useRef<VoiceState>('idle')
   const transcriptRef = useRef('')
@@ -159,7 +160,12 @@ export default function VoicePage() {
   const handleQuery = useCallback(
     async (query: string) => {
       if (!household || !query.trim()) return
+      // Guard: if already past listening (e.g. onresult already fired), skip
+      if (voiceStateRef.current !== 'listening' && voiceStateRef.current !== 'idle') return
 
+      // Update ref synchronously — onend checks this ref, so updating it here
+      // prevents onend from double-triggering if isFinal already called handleQuery
+      voiceStateRef.current = 'thinking'
       setVoiceState('thinking')
 
       try {
@@ -192,7 +198,7 @@ export default function VoicePage() {
 
           if (res.ok) {
             const data = await res.json()
-            response = { text: data.answer, model: data.model === 'gemma' ? 'gemma' : 'gemini' }
+            response = { text: data.answer, model: String(data.model ?? '').includes('gemma') ? 'gemma' : 'gemini' }
           } else {
             // Gemma failed — fall back to Gemini cloud instead of crashing
             const fallback = await fetch('/api/voice/query', {
@@ -277,8 +283,24 @@ export default function VoicePage() {
     }
   }
 
+  const unlockAudio = () => {
+    // Browsers block audio.play() unless triggered by a user gesture.
+    // Playing a silent buffer on the first tap unlocks autoplay for the session.
+    if (audioUnlockedRef.current) return
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const buf = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      src.connect(ctx.destination)
+      src.start(0)
+      ctx.resume().then(() => { audioUnlockedRef.current = true })
+    } catch {}
+  }
+
   const toggleListening = () => {
     if (!recognitionRef.current) return
+    unlockAudio()
 
     if (voiceState === 'listening') {
       recognitionRef.current.stop()
@@ -290,13 +312,13 @@ export default function VoicePage() {
       try {
         recognitionRef.current.start()
       } catch {
-        // Already started or permission denied — reset state silently
         setVoiceState('idle')
       }
     }
   }
 
   const handleSuggestionClick = (question: string) => {
+    unlockAudio()
     setTranscript(question)
     handleQuery(question)
   }
