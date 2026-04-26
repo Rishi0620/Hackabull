@@ -67,16 +67,6 @@ MONGODB_URI=... MONGODB_DB=medmate npx tsx scripts/seed-rich-demo.ts
 
 ---
 
-## Deploy
-
-See [DEPLOY.md](DEPLOY.md) for the full deployment guide. The short version:
-
-```bash
-vercel --prod --yes   # deploys in ~60 seconds, same URL every time
-```
-
----
-
 ## API routes
 
 | Route | Purpose |
